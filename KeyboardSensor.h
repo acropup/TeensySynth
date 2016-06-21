@@ -34,10 +34,9 @@ int OCT3_Midi_Note = MiddleC;
 const int RingCounterStateToOCTave[] = { 4, 5, 3, 0, 8, 6, 2, 1, 7, 9 };
 
 //Note: Microcontroller pins must be set and initialized using function InitKeybaordSensor()
-int clockPin; //Microcontroller pin connected to 4017 Clock pin
-int resetPin; //Microcontroller pin connected to 4017 Reset pin
-//Microcontroller pins used to sense keyboard key presses in the currently illuminated OCTave
-int keySensePins[8];
+int clockPin;        //Microcontroller pin connected to 4017 Clock pin
+int resetPin;        //Microcontroller pin connected to 4017 Reset pin
+int keySensePins[8]; //Microcontroller pins used to sense keyboard key presses in the currently illuminated OCTave
 
 const int numRingCounterStates = 10; //Must be <= 10 for 4017-series chips
 uint8_t keyStates[numRingCounterStates] = { 0 }; 
@@ -58,7 +57,7 @@ void InitKeyboardSensor(int ringCounterClockPin, int ringCounterResetPin, const 
   }
 }
 
-// Send a pulse to, for example, clock the ring counter
+// Send a digital pulse to, for example, clock the ring counter
 void sendPulse(int clockPin) {
   digitalWrite(clockPin, HIGH);
   delayMicroseconds(10); //TODO: figure out how much delay is actually necessary
@@ -66,6 +65,9 @@ void sendPulse(int clockPin) {
   delayMicroseconds(10);
 }
 
+// Tells the 4017 Ring Counter IC to disable the current output and 
+// enable the next output in sequence. The global variable ringCounterState
+// keeps track of which output is currently set.
 void shiftRingCounter() {
   ringCounterState++;
   if (ringCounterState < numRingCounterStates) {
@@ -77,6 +79,8 @@ void shiftRingCounter() {
   }
 }
 
+// Computes the MIDI note (a positive integer) for a key based on
+// the keyboard OCTave and the key offset within that octave.
 int getMidiNote(int baseOCTave, int keyOffset) {
   int midi_note = OCT3_Midi_Note + 8 * (baseOCTave - 3) + keyOffset;
   if (midi_note > 20 && midi_note <= 108) {
@@ -86,6 +90,8 @@ int getMidiNote(int baseOCTave, int keyOffset) {
   return 60; //TODO: we should do something smarter than play Middle C when there's an invalid note
 }
 
+// Senses all keyboard keys, and calls function onKeyChange for every key that
+// transitioned down or up.
 void senseKeys(void (*onKeyChange)(int midi_note, bool keyIsDown)) {
   do { //Loop through each OCTave
     shiftRingCounter(); //Shift to illuminate next OCTave
